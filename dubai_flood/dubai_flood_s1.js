@@ -139,7 +139,7 @@ print(
 );
 
 // print dates of after images to console
-var after_count = before_collection.size();
+var after_count = after_collection.size();
 print(
   ee.String("Tiles selected: After Flood ").cat("(").cat(after_count).cat(")"),
   dates(after_collection),
