@@ -1,35 +1,45 @@
+// STEP 1: AOI and Modis data
 var aoi =
-  /* color: #d63000 */
-  /* shown: false */
-  /* displayProperties: [
+    /* color: #d63000 */
+    /* shown: false */
+    /* displayProperties: [
       {
         "type": "rectangle"
       }
     ] */
-  ee.Geometry.Polygon(
-    [
+    ee.Geometry.Polygon(
       [
-        [85.19698604920998, 27.812837064871633],
-        [85.19698604920998, 27.578766965386176],
-        [85.49224361756936, 27.578766965386176],
-        [85.49224361756936, 27.812837064871633],
+        [
+          [85.22455023570537, 27.80807985157256],
+          [85.22455023570537, 27.598951434069242],
+          [85.46624945445537, 27.598951434069242],
+          [85.46624945445537, 27.80807985157256],
+        ],
       ],
-    ],
-    null,
-    false
-  );
+      null,
+      false
+    ),
+  modis = ee.ImageCollection("MODIS/061/MYD11A2");
 
 // Set center and visualize AOI
 Map.centerObject(aoi, 10);
 Map.addLayer(aoi, {}, "AOI", false);
 
-// Load MODIS LST data
-var modisLst = ee.ImageCollection("MODIS/006/MYD11A2").select("LST_Day_1km");
-
-// Filter for summer months (day 152 to 243) and apply scaling
+// STEP 2: Select summer months and filter required band
+var modisLst = modis.select("LST_Day_1km");
 var summerFilter = ee.Filter.dayOfYear(152, 243);
 
-// Function to compute mean summer LST for each year
+var year = 2020;
+var filterModis = modisLst
+  .filterDate(year + "-01-01", year + "-12-30")
+  .filter(summerFilter);
+
+// STEP 3: Compute mean temperature on year
+var meanTemp = filterModis.mean().multiply(0.02).subtract(273.15).clip(aoi);
+
+Map.addLayer(meanTemp, { palette: ["blue", "white", "red"], min: 25, max: 38 });
+
+// STEP 4: Loop over all the analysis years to get mean temperature
 var yearlySummerLST = ee.List.sequence(2003, 2024).map(function (year) {
   year = ee.Number(year);
   var filtered = modisLst
@@ -66,11 +76,12 @@ var yearlyFeatures = ee.FeatureCollection(yearlySummerLST);
 
 print(yearlyFeatures, "yearlyFeatures");
 
+// STEP 5: Generate graph
 // Create a chart for visualization
 // var chart = ui.Chart.feature.byFeature(yearlyFeatures, 'year', 'meanTemp')
 //   .setChartType('LineChart')
 //   .setOptions({
-//     title: 'Mean Yearly Summer Surface Temperature (2000-2024)',
+//     title: 'Mean Yearly Summer Surface Temperature (2003-2024)',
 //     hAxis: { title: 'Year' },
 //     vAxis: { title: 'Temperature (°C)' },
 //     lineWidth: 2,
@@ -79,7 +90,7 @@ print(yearlyFeatures, "yearlyFeatures");
 
 // print(chart);
 
-// Create a feature collection of yearly mean temperatures
+// STEP 6: Regration analysis
 var yearlyFeatures = ee.FeatureCollection(yearlySummerLST);
 
 // Filter valid data
